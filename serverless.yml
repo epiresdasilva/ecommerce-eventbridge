@@ -1,0 +1,185 @@
+service: ecommerce-eventbridge
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: python3.8
+  memorySize: 128
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - events:PutEvents
+      Resource: "*"
+  eventBridge:
+    useCloudFormation: true
+
+functions:
+  #Pedido
+  pedidoIncluir:
+    handler: pedido/commands/pedido_incluir.main
+    events:
+      - http:
+          path: pedido
+          method: post
+  pedidoValidadorExpiracao:
+    handler: pedido/commands/pedido_validador_expiracao.main
+  pedidoExpirado:
+    handler: pedido/listeners/pedido_expirado.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - PedidoExpirado
+  pedidoIncluido:
+    handler: pedido/listeners/pedido_incluido.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - PedidoIncluido
+
+  #Venda
+  vendaFaturar:
+    handler: venda/commands/venda_faturar.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - PagamentoEfetuado
+  vendaIncluir:
+    handler: venda/commands/venda_incluir.main
+    events:
+      - http:
+          path: venda
+          method: post
+  vendaFaturada:
+    handler: venda/listeners/venda_faturada.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - Faturado
+  vendaIncluida:
+    handler: venda/listeners/venda_incluida.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - VendaIncluida
+
+  #Pagamento
+  pagamentoIncluirPendente:
+    handler: pagamento/commands/pagamento_incluir_pendente.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - VendaIncluida
+  pagar:
+    handler: pagamento/commands/pagar.main
+    events:
+      - http:
+          path: pagamento
+          method: put
+  pagamentoEfetuado:
+    handler: pagamento/listeners/pagamento_efetuado.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - PagamentoEfetuado
+  pagamentoIncluido:
+    handler: pagamento/listeners/pagamento_incluido.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - PagamentoIncluido
+
+  #Logistica
+  despachoConfirmar:
+    handler: logistica/commands/despacho_confirmar.main
+    events:
+      - http:
+          path: despacho
+          method: put
+  despachoIncluirPendente:
+    handler: logistica/commands/despacho_incluir_pendente.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - VendaSeparada
+  entregaConfirmar:
+    handler: logistica/commands/entrega_confirmar.main
+    events:
+      - http:
+          path: entrega
+          method: post
+  separacaoIncluirPendente:
+    handler: logistica/commands/separacao_incluir_pendente.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - Faturado
+  separacaoConfirmar:
+    handler: logistica/commands/separacao_confirmar.main
+    events:
+      - http:
+          path: separacao
+          method: put
+  despachoIncluido:
+    handler: logistica/listeners/despacho_incluido.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - DespachoIncluido
+  vendaDespachada:
+    handler: logistica/listeners/venda_despachada.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - VendaDespachada
+  vendaEntregue:
+    handler: logistica/listeners/venda_entregue.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - VendaEntregue
+  separacaoIncluida:
+    handler: logistica/listeners/separacao_incluida.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - SeparacaoIncluida
+  vendaSeparada:
+    handler: logistica/listeners/venda_separada.main
+    events:
+      - eventBridge:
+          eventBus: ecommerce-event-bridge-bus
+          pattern:
+            source:
+              - VendaSeparada
